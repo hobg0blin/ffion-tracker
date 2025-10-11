@@ -1,0 +1,44 @@
+{
+  "lexicon": 1,
+  "id": "com.ffion.status",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "A status update for Ffion the cat.",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["state", "createdAt"],
+        "properties": {
+          "state": {
+            "type": "string",
+            "description": "The current activity state of Ffion.",
+            "knownValues": [
+              "com.ffion.eating",
+              "com.ffion.zoomies",
+              "com.ffion.playing",
+              "com.ffion.sleeping"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime",
+            "description": "The timestamp when this status was created."
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 300,
+            "maxGraphemes": 300,
+            "description": "Optional text description or caption for this status."
+          },
+          "image": {
+            "type": "blob",
+            "accept": ["image/*"],
+            "maxSize": 1000000,
+            "description": "Optional image of Ffion in this state."
+          }
+        }
+      }
+    }
+  }
+}

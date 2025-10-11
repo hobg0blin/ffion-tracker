@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node lexicons.js)",
+      "WebFetch(domain:atproto.com)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "Bash(curl \"http://localhost:3000/xrpc/com.atproto.repo.getRecord?repo=did:plc:ffion&collection=com.ffion.status&rkey=3m2wymmsqck2p\")",
+      "Bash(curl:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

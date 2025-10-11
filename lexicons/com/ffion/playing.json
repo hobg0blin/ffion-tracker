@@ -1,0 +1,10 @@
+{
+  "lexicon": 1,
+  "id": "com.ffion.playing",
+  "defs": {
+    "main": {
+      "type": "token",
+      "description": "Ffion is playing."
+    }
+  }
+}

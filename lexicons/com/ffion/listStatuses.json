@@ -1,0 +1,47 @@
+{
+  "lexicon": 1,
+  "id": "com.ffion.listStatuses",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "List status updates for Ffion.",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Maximum number of statuses to return."
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor for fetching more results."
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["statuses"],
+          "properties": {
+            "cursor": {
+              "type": "string",
+              "description": "Pagination cursor for next page of results."
+            },
+            "statuses": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "com.ffion.status"
+              },
+              "description": "List of status records."
+            }
+          }
+        }
+      }
+    }
+  }
+}
