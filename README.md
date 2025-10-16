@@ -1,5 +1,7 @@
 # Ffion Tracker
 
+> **⚠️ Warning:** If this line is present, this means this project was vibe-coded and I haven't done a thorough review of it. Use at your own risk.
+
 An ATProto-based social network for tracking Ffion the cat's activities. This project combines real-time cat detection using YOLO with automatic posting to an ATProto PDS.
 
 ## Features
