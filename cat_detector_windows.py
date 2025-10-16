@@ -13,9 +13,9 @@ from ultralytics import YOLO
 import torch
 from PIL import Image
 import os
+import sys
 
 # Configuration
-WEBCAM_INDEX = 0
 CONFIDENCE_THRESHOLD = 0.5
 CAT_CLASS_ID = 15  # COCO dataset class ID for 'cat'
 COOLDOWN_SECONDS = 60  # Wait time between detections
@@ -33,9 +33,74 @@ STATES = {
 }
 
 
+def list_available_cameras():
+    """Scan for available cameras and return a list of working indices."""
+    print("Scanning for available cameras...")
+    available_cameras = []
+
+    # Try camera indices 0-10
+    for index in range(11):
+        cap = cv2.VideoCapture(index, cv2.CAP_DSHOW)
+        if cap.isOpened():
+            # Try to read a frame to verify it actually works
+            ret, frame = cap.read()
+            if ret and frame is not None:
+                # Get camera properties
+                width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                available_cameras.append({
+                    'index': index,
+                    'width': width,
+                    'height': height
+                })
+                print(f"  ✓ Camera {index}: {width}x{height}")
+            cap.release()
+
+    return available_cameras
+
+
+def select_camera():
+    """Prompt user to select a camera from available cameras."""
+    cameras = list_available_cameras()
+
+    if not cameras:
+        print("\n❌ No cameras found!")
+        print("Make sure your webcam is connected and not in use by another application.")
+        sys.exit(1)
+
+    if len(cameras) == 1:
+        selected = cameras[0]
+        print(f"\nOnly one camera found. Using Camera {selected['index']}")
+        return selected['index']
+
+    print(f"\nFound {len(cameras)} camera(s)")
+    print("\nAvailable cameras:")
+    for cam in cameras:
+        print(f"  [{cam['index']}] Camera {cam['index']} - {cam['width']}x{cam['height']}")
+
+    while True:
+        try:
+            choice = input(f"\nSelect camera index (0-{cameras[-1]['index']}): ").strip()
+            camera_index = int(choice)
+
+            # Check if the selected index is in our available cameras
+            if any(cam['index'] == camera_index for cam in cameras):
+                print(f"✓ Selected Camera {camera_index}")
+                return camera_index
+            else:
+                print(f"❌ Camera {camera_index} is not available. Please choose from the list above.")
+        except ValueError:
+            print("❌ Please enter a valid number.")
+        except KeyboardInterrupt:
+            print("\n\nCancelled by user.")
+            sys.exit(0)
+
+
 class CatDetector:
-    def __init__(self):
+    def __init__(self, webcam_index=0):
         """Initialize the cat detector with YOLO model."""
+        self.webcam_index = webcam_index
+
         print("Loading YOLO model...")
         self.yolo_model = YOLO('yolov8n.pt')  # Using YOLOv8 nano for speed
         print("YOLO model loaded!")
@@ -177,8 +242,8 @@ class CatDetector:
 
     def run(self):
         """Main loop to monitor webcam and detect cats."""
-        print(f"Starting webcam (index {WEBCAM_INDEX})...")
-        cap = cv2.VideoCapture(WEBCAM_INDEX, cv2.CAP_DSHOW)  # Use DirectShow on Windows
+        print(f"\nStarting webcam (index {self.webcam_index})...")
+        cap = cv2.VideoCapture(self.webcam_index, cv2.CAP_DSHOW)  # Use DirectShow on Windows
 
         if not cap.isOpened():
             print("Error: Could not open webcam")
@@ -268,8 +333,13 @@ def main():
     print("=" * 60)
     print("Connecting to WSL server at localhost:3000")
     print("=" * 60)
+    print()
 
-    detector = CatDetector()
+    # Select camera
+    camera_index = select_camera()
+
+    # Initialize detector with selected camera
+    detector = CatDetector(webcam_index=camera_index)
     detector.run()
 
 
