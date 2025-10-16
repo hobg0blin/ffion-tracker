@@ -1,52 +1,136 @@
 # Ffion Tracker
 
-An ATProto-based social network for tracking Ffion the cat's activities. This is a learning project for understanding AT Protocol development.
+An ATProto-based social network for tracking Ffion the cat's activities. This project combines real-time cat detection using YOLO with automatic posting to an ATProto PDS.
 
-## Getting Started
+## Features
 
-### Install dependencies
+- 🐱 Real-time cat detection using YOLOv8
+- 📸 Automatic image capture when cat is detected
+- 🤖 Image description generation
+- 📡 Automatic posting to ATProto PDS
+- 💾 Persistent OAuth session storage with SQLite
+- 🌐 Browser-based OAuth login flow
 
+## Setup
+
+### 1. Node.js Server (WSL/Linux)
+
+Install dependencies:
 ```bash
 npm install
 ```
 
-### Start the API server
-
+Start the server:
 ```bash
 node server.js
 ```
 
-The server will start on `http://localhost:3000`
+The server will be available at `http://127.0.0.1:3000`
 
-## API Usage
+### 2. Authentication
 
-### Create a status record
+Visit http://127.0.0.1:3000/login (or http://localhost:3000/login from Windows) in your browser:
+1. Enter your ATProto handle (e.g., `your-handle.bsky.social`)
+2. Complete the OAuth flow
+3. After successful login, visit http://127.0.0.1:3000/get-cookie
+4. Copy the cookie value and create a `cookies.txt` file:
 
-```bash
-curl -X POST http://localhost:3000/xrpc/com.atproto.repo.createRecord \
-  -H "Content-Type: application/json" \
-  -d '{
-    "repo": "did:plc:ffion",
-    "collection": "com.ffion.status",
-    "record": {
-      "$type": "com.ffion.status",
-      "state": "com.ffion.sleeping",
-      "text": "Ffion is napping after a big meal",
-      "createdAt": "2025-10-11T20:11:00.000Z"
-    }
-  }'
+```
+# Netscape HTTP Cookie File
+127.0.0.1	FALSE	/	FALSE	0	ffion_sid	<your-cookie-value-here>
 ```
 
-### List all status records
+**Note:** You only need to authenticate once! The session is stored persistently in SQLite and will survive server restarts.
 
+### 3. Python Cat Detector
+
+#### For WSL Users (Recommended)
+
+Since WSL doesn't have direct webcam access, run the Python script on Windows while keeping the server in WSL:
+
+**On Windows:**
 ```bash
-curl "http://localhost:3000/xrpc/com.atproto.repo.listRecords?repo=did:plc:ffion&collection=com.ffion.status"
+# Install Python dependencies
+pip install -r requirements.txt
+
+# Copy the cookies.txt file to the same directory
+
+# Run the Windows version
+python cat_detector_windows.py
 ```
 
-### Get a specific record
+The Windows script will connect to the WSL server via `localhost:3000`.
+
+#### For Linux/Mac Users
 
 ```bash
-curl "http://localhost:3000/xrpc/com.atproto.repo.getRecord?repo=did:plc:ffion&collection=com.ffion.status&rkey=<rkey>"
+# Install Python dependencies
+pip install -r requirements.txt
+
+# Run the detector
+python3 cat_detector.py
+```
+
+## How It Works
+
+1. **Server** (Node.js in WSL/Linux):
+   - Handles OAuth authentication with ATProto
+   - Stores sessions persistently in SQLite
+   - Provides API endpoint to post cat statuses
+
+2. **Cat Detector** (Python on Windows/Linux):
+   - Monitors webcam feed using OpenCV
+   - Detects cats using YOLOv8 (class ID 15)
+   - Generates image descriptions
+   - Posts images and descriptions to the server
+
+3. **Session Persistence**:
+   - OAuth tokens stored in SQLite database
+   - Automatic token refresh
+   - No need to re-authenticate after server restarts
+
+## Configuration
+
+Edit the configuration variables in `cat_detector.py` or `cat_detector_windows.py`:
+
+```python
+WEBCAM_INDEX = 0              # Camera index
+CONFIDENCE_THRESHOLD = 0.5    # Detection confidence (0.0-1.0)
+COOLDOWN_SECONDS = 60         # Wait time between detections
+```
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────┐
+│  Windows (or Host OS)                          │
+│  ┌───────────────────────────────────────┐    │
+│  │  Python Cat Detector                   │    │
+│  │  - Webcam access                       │    │
+│  │  - YOLO detection                      │    │
+│  │  - Image description                   │    │
+│  └───────────────┬───────────────────────┘    │
+│                  │ HTTP POST                   │
+│                  │ localhost:3000              │
+└──────────────────┼─────────────────────────────┘
+                   │
+┌──────────────────▼─────────────────────────────┐
+│  WSL/Linux                                     │
+│  ┌───────────────────────────────────────┐    │
+│  │  Node.js Server                        │    │
+│  │  - OAuth authentication                │    │
+│  │  - SQLite session storage              │    │
+│  │  - ATProto integration                 │    │
+│  └───────────────┬───────────────────────┘    │
+└──────────────────┼─────────────────────────────┘
+                   │
+                   │ OAuth/HTTPS
+                   │
+┌──────────────────▼─────────────────────────────┐
+│  ATProto PDS                                   │
+│  - Store cat status records                    │
+│  - Store images as blobs                       │
+└────────────────────────────────────────────────┘
 ```
 
 ## Available States
@@ -55,6 +139,16 @@ curl "http://localhost:3000/xrpc/com.atproto.repo.getRecord?repo=did:plc:ffion&c
 - `com.ffion.zoomies` - Ffion is being insane
 - `com.ffion.playing` - Ffion is playing
 - `com.ffion.sleeping` - Ffion is sleeping
+
+## API Endpoints
+
+- `GET /` - View latest Ffion status
+- `GET /login` - Browser-based login page
+- `POST /login` - Initiate OAuth flow (JSON API)
+- `GET /oauth/callback` - OAuth callback
+- `GET /get-cookie` - Get session cookie for Python script
+- `POST /ffion/status` - Post a cat status (authenticated)
+- `GET /session` - Check authentication status
 
 ## Project Structure
 
@@ -67,14 +161,19 @@ lexicons/com/ffion/     # Lexicon schema definitions
 ├── status.json         # Record: status update with state, text, image, timestamp
 └── listStatuses.json   # Query: list status records
 
+server.js               # Express API server with OAuth and ATProto integration
+auth-storage.js         # SQLite-based persistent session storage
+oauth-client.js         # OAuth client configuration
 lexicons.js             # Loads all lexicons and validates
-server.js               # Express API server with XRPC-style endpoints
-cat-lexicon.json        # (deprecated) Original combined lexicon file
+cat_detector.py         # Cat detection script for Linux/Mac
+cat_detector_windows.py # Cat detection script for Windows
+requirements.txt        # Python dependencies
 ```
 
-## Notes
+## Future Improvements
 
-- Records are stored in-memory and will be lost when the server restarts
-- The server implements basic XRPC-style endpoints following ATProto conventions
-- Record keys (rkeys) are generated using TIDs (Timestamp Identifiers)
-- All records are validated against their lexicon schemas before storage
+- [ ] Integrate local vision model (LLaVA) for better image descriptions
+- [ ] Add support for multiple cats
+- [ ] Activity tracking and analytics
+- [ ] Mobile app integration
+- [ ] Real-time notifications
