@@ -1,3 +1,9 @@
 node_modules/
 CLAUDE.md
 .claude/
+*.db
+cookies.txt
+detected_cats/
+*.pyc
+__pycache__/
+*.pt
