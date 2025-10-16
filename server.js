@@ -228,6 +228,185 @@ app.get('/client-metadata.json', (req, res) => {
   res.json(oauthClient.clientMetadata)
 })
 
+// GET /login - Display login form
+app.get('/login', (req, res) => {
+  res.send(`
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Ffion Tracker - Login</title>
+        <style>
+          body {
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            width: 100%;
+          }
+          h1 {
+            color: #ff6b9d;
+            text-align: center;
+            margin-bottom: 30px;
+          }
+          .form-group {
+            margin-bottom: 20px;
+          }
+          label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: bold;
+          }
+          input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+            font-family: monospace;
+          }
+          input[type="text"]:focus {
+            outline: none;
+            border-color: #ff6b9d;
+          }
+          button {
+            width: 100%;
+            padding: 15px;
+            background: #ff6b9d;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+          }
+          button:hover {
+            background: #ff5a8c;
+          }
+          button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+          }
+          .example {
+            color: #666;
+            font-size: 14px;
+            margin-top: 5px;
+          }
+          .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+          }
+          .status.error {
+            background: #ffebee;
+            color: #c62828;
+            display: block;
+          }
+          .status.success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            display: block;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h1>🐱 Ffion Tracker Login</h1>
+          <form id="loginForm">
+            <div class="form-group">
+              <label for="handle">ATProto Handle:</label>
+              <input
+                type="text"
+                id="handle"
+                name="handle"
+                placeholder="your-handle.bsky.social"
+                required
+              >
+              <div class="example">Example: alice.bsky.social or alice.example.com</div>
+            </div>
+            <button type="submit" id="submitBtn">Login with ATProto</button>
+          </form>
+          <div id="status" class="status"></div>
+        </div>
+
+        <script>
+          const form = document.getElementById('loginForm');
+          const status = document.getElementById('status');
+          const submitBtn = document.getElementById('submitBtn');
+
+          form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const handle = document.getElementById('handle').value.trim();
+
+            if (!handle) {
+              status.className = 'status error';
+              status.textContent = 'Please enter your ATProto handle';
+              return;
+            }
+
+            // Disable form
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Connecting...';
+            status.className = 'status';
+            status.style.display = 'none';
+
+            try {
+              const response = await fetch('/login', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ handle }),
+              });
+
+              const data = await response.json();
+
+              if (response.ok && data.authUrl) {
+                status.className = 'status success';
+                status.textContent = 'Redirecting to authentication...';
+                status.style.display = 'block';
+
+                // Redirect to OAuth provider
+                setTimeout(() => {
+                  window.location.href = data.authUrl;
+                }, 1000);
+              } else {
+                status.className = 'status error';
+                status.textContent = data.message || 'Login failed. Please try again.';
+                status.style.display = 'block';
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Login with ATProto';
+              }
+            } catch (error) {
+              status.className = 'status error';
+              status.textContent = 'Network error. Please try again.';
+              status.style.display = 'block';
+              submitBtn.disabled = false;
+              submitBtn.textContent = 'Login with ATProto';
+            }
+          });
+        </script>
+      </body>
+    </html>
+  `)
+})
+
 // POST /login - Initiate OAuth flow
 app.post('/login', async (req, res) => {
   try {
