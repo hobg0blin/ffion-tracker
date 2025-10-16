@@ -7,3 +7,6 @@ detected_cats/
 *.pyc
 __pycache__/
 *.pt
+.venv/
+.env
+get-pip.py
