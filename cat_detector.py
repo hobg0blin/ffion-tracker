@@ -113,16 +113,9 @@ class CatDetector:
             # Load image
             image = Image.open(image_path)
 
-            # Encode image
-            enc_image = self.vision_model.encode_image(image)
-
-            # Generate description with a cat-focused prompt
+            # Generate description with a cat-focused prompt using Moondream's query method
             prompt = "Describe what this cat is doing in one short sentence."
-            description = self.vision_model.answer_question(
-                enc_image,
-                prompt,
-                self.vision_tokenizer
-            )
+            description = self.vision_model.query(image, prompt)["answer"]
 
             # Clean up the description
             description = description.strip()
@@ -135,6 +128,8 @@ class CatDetector:
 
         except Exception as e:
             print(f"Error generating image description: {e}")
+            import traceback
+            traceback.print_exc()
             # Fallback to simple description
             return "A cat has been spotted"
 

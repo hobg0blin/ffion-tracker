@@ -163,11 +163,13 @@ ffion-tracker/
 - Uses **Moondream2** vision model for image captioning
 - Model: `vikhyatk/moondream2` (revision 2024-08-26)
 - Lightweight 1.6B parameter model optimized for CPU inference
+- Uses Moondream's `query()` API method
 - Prompt: "Describe what this cat is doing in one short sentence."
 - Automatically uses GPU if available, falls back to CPU
 - Descriptions limited to 100 characters
 - Fallback to simple message on error
 - State is then determined from description keywords
+- **Requires**: pyvips and libvips (see installation instructions)
 
 ### 4. State Mapping
 - `com.ffion.eating` - Keywords: eat, food, dinner, breakfast, treats
@@ -207,12 +209,18 @@ ffion-tracker/
    - Visit `/get-cookie` to get session cookie
    - Create `cookies.txt` file in project root
 
-4. **Install Python dependencies (on Windows):**
+4. **Install libvips (on Windows, required for Moondream):**
+   - Download latest from: https://github.com/libvips/build-win64-mxe/releases
+   - Download: `vips-dev-w64-all-{version}.zip`
+   - Extract to: `C:\vips` (or any location)
+   - Add `C:\vips\bin` to system PATH environment variable
+
+5. **Install Python dependencies (on Windows):**
    ```bash
    pip install -r requirements.txt
    ```
 
-5. **Run cat detector (on Windows):**
+6. **Run cat detector (on Windows):**
    ```bash
    python cat_detector_windows.py
    ```
@@ -410,7 +418,14 @@ Images are uploaded as blobs using `com.atproto.repo.uploadBlob`, then reference
 - Requires authentication via session cookie
 - Redirects to homepage after successful deletion
 
+### 2025-10-17 - Moondream API Fix
+- Fixed image description generation to use proper Moondream `query()` API method
+- Updated to use `model.query(image, prompt)["answer"]` instead of deprecated methods
+- Added libvips installation instructions for Windows
+- Fixed PhiForCausalLM AttributeError by using correct API
+- Updated both cat_detector.py and cat_detector_windows.py
+
 ---
 
 Last Updated: 2025-10-17
-Project Version: 1.2.0
+Project Version: 1.3.0
