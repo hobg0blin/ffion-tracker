@@ -109,7 +109,7 @@ class CatDetector:
 
         print("Loading Moondream vision model...")
         model_id = "vikhyatk/moondream2"
-        revision = "2024-08-26"  # Stable revision with better quality
+        revision = "2025-06-21"  # Stable revision with better quality
         self.vision_model = AutoModelForCausalLM.from_pretrained(
             model_id,
             revision=revision,
