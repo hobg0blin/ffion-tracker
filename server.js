@@ -566,14 +566,17 @@ app.get('/oauth/callback', async (req, res) => {
 
     // Create iron-session
     const session = await getSession(req, res)
+    console.log('Session before save:', session)
     session.did = oauthSession.did
     await session.save()
 
     console.log('Session saved with DID:', session.did)
+    console.log('Session after save:', session)
 
     // Get the cookie that was set
     const setCookieHeader = res.getHeader('Set-Cookie')
     console.log('Set-Cookie header:', setCookieHeader)
+    console.log('Request host:', req.headers.host)
 
     res.send(`
       <html>

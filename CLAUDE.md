@@ -301,6 +301,8 @@ curl -X POST http://127.0.0.1:3000/ffion/status \
 
 6. **Cookie Security**: Development cookie secret is hardcoded. Use environment variable in production.
 
+7. **Firefox Cookie Issue**: Firefox treats `localhost` and `127.0.0.1` as different domains. **Use `http://127.0.0.1:3000` consistently** for login and frontend. If you log in on `localhost` but visit frontend on `127.0.0.1` (or vice versa), cookies won't work.
+
 ## Future Enhancements
 
 - [ ] Use lightweight LLM for state classification (Phi-3 or TinyLlama)
