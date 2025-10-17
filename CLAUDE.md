@@ -209,18 +209,13 @@ ffion-tracker/
    - Visit `/get-cookie` to get session cookie
    - Create `cookies.txt` file in project root
 
-4. **Install libvips (on Windows, required for Moondream):**
-   - Download latest from: https://github.com/libvips/build-win64-mxe/releases
-   - Download: `vips-dev-w64-all-{version}.zip`
-   - Extract to: `C:\vips` (or any location)
-   - Add `C:\vips\bin` to system PATH environment variable
-
-5. **Install Python dependencies (on Windows):**
+4. **Install Python dependencies (on Windows):**
    ```bash
    pip install -r requirements.txt
    ```
+   Note: pyvips should install automatically with its dependencies
 
-6. **Run cat detector (on Windows):**
+5. **Run cat detector (on Windows):**
    ```bash
    python cat_detector_windows.py
    ```
