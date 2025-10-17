@@ -19,6 +19,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 # Configuration
 CONFIDENCE_THRESHOLD = 0.5
 CAT_CLASS_ID = 15  # COCO dataset class ID for 'cat'
+PERSON_CLASS_ID = 0  # COCO dataset class ID for 'person'
 COOLDOWN_SECONDS = 60  # Wait time between detections
 SAVE_DIR = Path("./detected_cats")
 # WSL server is accessible from Windows via localhost
@@ -151,8 +152,12 @@ class CatDetector:
             return None
 
     def detect_cat(self, frame):
-        """Detect if a cat is present in the frame."""
+        """Detect if a cat is present in the frame. Also checks for person detection for privacy."""
         results = self.yolo_model(frame, verbose=False)
+
+        cat_detected = False
+        cat_confidence = 0.0
+        person_detected = False
 
         for result in results:
             boxes = result.boxes
@@ -161,9 +166,13 @@ class CatDetector:
                 confidence = float(box.conf[0])
 
                 if class_id == CAT_CLASS_ID and confidence >= CONFIDENCE_THRESHOLD:
-                    return True, confidence
+                    cat_detected = True
+                    cat_confidence = max(cat_confidence, confidence)
 
-        return False, 0.0
+                if class_id == PERSON_CLASS_ID and confidence >= CONFIDENCE_THRESHOLD:
+                    person_detected = True
+
+        return cat_detected, cat_confidence, person_detected
 
     def describe_image(self, image_path):
         """Use Moondream vision model to describe the image."""
@@ -195,6 +204,13 @@ class CatDetector:
             print(f"Error generating image description: {e}")
             # Fallback to simple description
             return "A cat has been spotted"
+
+    def check_person_in_description(self, description):
+        """Check if the description mentions a person (privacy filter)."""
+        description_lower = description.lower()
+        person_words = ['person', 'people', 'human', 'man', 'woman', 'someone', 'individual',
+                        'owner', 'lady', 'gentleman', 'boy', 'girl', 'child', 'adult']
+        return any(word in description_lower for word in person_words)
 
     def determine_state(self, description):
         """Determine the cat's state based on the description."""
@@ -293,8 +309,18 @@ class CatDetector:
                         break
                     continue
 
-                # Detect cat
-                cat_detected, confidence = self.detect_cat(frame)
+                # Detect cat (and check for person for privacy)
+                cat_detected, confidence, person_detected = self.detect_cat(frame)
+
+                # Privacy filter #1: Skip if both person and cat detected
+                if cat_detected and person_detected:
+                    print(f"⚠ Privacy filter: Person detected with cat, skipping frame")
+                    cv2.putText(frame, "PRIVACY: Person detected", (10, 30),
+                               cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+                    cv2.imshow('Cat Detector', frame)
+                    if cv2.waitKey(1) & 0xFF == ord('q'):
+                        break
+                    continue
 
                 if cat_detected:
                     print(f"Cat detected! (confidence: {confidence:.2f})")
@@ -308,6 +334,14 @@ class CatDetector:
                     # Describe image
                     description = self.describe_image(image_path)
                     print(f"Description: {description}")
+
+                    # Privacy filter #2: Check if description mentions a person
+                    if self.check_person_in_description(description):
+                        print(f"⚠ Privacy filter: Description mentions person, skipping post")
+                        print(f"  (Image saved locally but not posted)")
+                        # Update last detection time to avoid immediate re-detection
+                        self.last_detection_time = current_time
+                        continue
 
                     # Determine state
                     state = self.determine_state(description)

@@ -54,6 +54,29 @@ WSL Node.js Server → Authenticate → Upload to ATProto PDS
 - **Python**: Version 3.x with cv2, ultralytics, torch, etc.
 - **Webcam Access**: Windows-side only (WSL doesn't support direct webcam access)
 
+## Privacy & Security
+
+**IMPORTANT**: The cat detector includes dual privacy safeguards to prevent capturing/posting images of people:
+
+### Privacy Filter #1: YOLO Person Detection
+- Detects both cats (class ID 15) and persons (class ID 0)
+- **Skips frames where both person and cat are detected**
+- Displays "PRIVACY: Person detected" warning on video feed
+- No image is saved or processed
+
+### Privacy Filter #2: Moondream Description Check
+- After image description is generated, checks for person-related words
+- Keywords: person, people, human, man, woman, someone, individual, owner, lady, gentleman, boy, girl, child, adult
+- **Does not post to server if person mentioned in description**
+- Image is saved locally but NOT uploaded to PDS
+- Console shows: "⚠ Privacy filter: Description mentions person, skipping post"
+
+### Defense-in-Depth
+Both filters work independently:
+1. First filter catches obvious cases where YOLO detects a person
+2. Second filter catches cases where YOLO missed the person but Moondream describes one
+3. This dual-layer approach minimizes false negatives
+
 ## User Preferences & Guidelines
 
 ### Git Commits
@@ -134,6 +157,7 @@ ffion-tracker/
 - 60-second cooldown between detections
 - Camera selection interface (scans indices 0-10)
 - Only processes every 10th frame for CPU efficiency
+- **Dual privacy filters**: Rejects frames with people detected (YOLO + Moondream)
 
 ### 3. Image Description
 - Uses **Moondream2** vision model for image captioning
@@ -363,7 +387,14 @@ Images are uploaded as blobs using `com.atproto.repo.uploadBlob`, then reference
 - Added chronological navigation to frontend status viewer (Previous/Next/Latest buttons)
 - Integrated Moondream2 vision model for real image descriptions (replaces time-based heuristic)
 
+### 2025-10-17 - Privacy Filters
+- Added dual privacy safeguards to prevent capturing/posting images with people
+- Filter #1: YOLO person detection (class ID 0) - skips frames with both person and cat
+- Filter #2: Moondream description check - blocks posts if person mentioned in description
+- Both filters work independently for defense-in-depth
+- Updated both cat_detector.py and cat_detector_windows.py
+
 ---
 
-Last Updated: 2025-10-16
-Project Version: 1.0.0
+Last Updated: 2025-10-17
+Project Version: 1.1.0
