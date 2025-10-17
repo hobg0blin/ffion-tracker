@@ -14,6 +14,7 @@ import torch
 from PIL import Image
 import os
 import sys
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 # Configuration
 CONFIDENCE_THRESHOLD = 0.5
@@ -98,12 +99,25 @@ def select_camera():
 
 class CatDetector:
     def __init__(self, webcam_index=0):
-        """Initialize the cat detector with YOLO model."""
+        """Initialize the cat detector with YOLO and vision models."""
         self.webcam_index = webcam_index
 
         print("Loading YOLO model...")
         self.yolo_model = YOLO('yolov8n.pt')  # Using YOLOv8 nano for speed
         print("YOLO model loaded!")
+
+        print("Loading Moondream vision model...")
+        model_id = "vikhyatk/moondream2"
+        revision = "2024-08-26"
+        self.vision_model = AutoModelForCausalLM.from_pretrained(
+            model_id,
+            revision=revision,
+            trust_remote_code=True,
+            torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+            device_map={"": "cuda" if torch.cuda.is_available() else "cpu"}
+        )
+        self.vision_tokenizer = AutoTokenizer.from_pretrained(model_id, revision=revision)
+        print(f"Vision model loaded! (Using {'GPU' if torch.cuda.is_available() else 'CPU'})")
 
         # Create save directory
         SAVE_DIR.mkdir(exist_ok=True)
@@ -152,41 +166,35 @@ class CatDetector:
         return False, 0.0
 
     def describe_image(self, image_path):
-        """
-        Use a local vision model to describe the image.
-        For now, uses a simple heuristic. Can be replaced with LLaVA or similar.
-        """
-        # TODO: Integrate with a local vision model like LLaVA
-        # For now, return a simple description based on time of day
-        hour = datetime.now().hour
+        """Use Moondream vision model to describe the image."""
+        try:
+            # Load image
+            image = Image.open(image_path)
 
-        if 6 <= hour < 12:
-            descriptions = [
-                "Morning stretches and yawns",
-                "Contemplating breakfast",
-                "Early bird (cat) gets the treats"
-            ]
-        elif 12 <= hour < 17:
-            descriptions = [
-                "Afternoon sunbathing session",
-                "Keeping watch over the domain",
-                "Midday contemplation"
-            ]
-        elif 17 <= hour < 22:
-            descriptions = [
-                "Evening playtime energy",
-                "Dinner thoughts intensifying",
-                "Prime hunting hours begin"
-            ]
-        else:
-            descriptions = [
-                "Late night mischief brewing",
-                "Nocturnal activities in progress",
-                "Midnight zoomies approaching"
-            ]
+            # Encode image
+            enc_image = self.vision_model.encode_image(image)
 
-        import random
-        return random.choice(descriptions)
+            # Generate description with a cat-focused prompt
+            prompt = "Describe what this cat is doing in one short sentence."
+            description = self.vision_model.answer_question(
+                enc_image,
+                prompt,
+                self.vision_tokenizer
+            )
+
+            # Clean up the description
+            description = description.strip()
+
+            # Ensure it's not too long
+            if len(description) > 100:
+                description = description[:97] + "..."
+
+            return description
+
+        except Exception as e:
+            print(f"Error generating image description: {e}")
+            # Fallback to simple description
+            return "A cat has been spotted"
 
     def determine_state(self, description):
         """Determine the cat's state based on the description."""

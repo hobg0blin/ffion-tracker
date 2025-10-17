@@ -136,9 +136,14 @@ ffion-tracker/
 - Only processes every 10th frame for CPU efficiency
 
 ### 3. Image Description
-- Currently uses time-based heuristic
-- TODO: Can be upgraded to local vision model (LLaVA)
-- Determines cat state from description keywords
+- Uses **Moondream2** vision model for image captioning
+- Model: `vikhyatk/moondream2` (revision 2024-08-26)
+- Lightweight 1.6B parameter model optimized for CPU inference
+- Prompt: "Describe what this cat is doing in one short sentence."
+- Automatically uses GPU if available, falls back to CPU
+- Descriptions limited to 100 characters
+- Fallback to simple message on error
+- State is then determined from description keywords
 
 ### 4. State Mapping
 - `com.ffion.eating` - Keywords: eat, food, dinner, breakfast, treats
@@ -255,25 +260,27 @@ curl -X POST http://127.0.0.1:3000/ffion/status \
 
 1. **WSL Webcam Access**: WSL doesn't support direct webcam access. Solution: Run Python script on Windows host, Node.js server in WSL.
 
-2. **Image Descriptions**: Currently using time-based heuristics. Future improvement: Integrate LLaVA or similar vision model.
+2. **Vision Model Performance**: Moondream runs on CPU by default which may be slow. GPU recommended for better performance.
 
-3. **Camera Detection**: Scans indices 0-10. If camera is at higher index, increase range in `list_available_cameras()`.
+3. **State Classification**: Currently uses keyword matching on descriptions. Future: Use lightweight LLM for better state classification.
 
-4. **Session Persistence**: Sessions stored in SQLite but database file is gitignored. Backup if needed.
+4. **Camera Detection**: Scans indices 0-10. If camera is at higher index, increase range in `list_available_cameras()`.
 
-5. **Cookie Security**: Development cookie secret is hardcoded. Use environment variable in production.
+5. **Session Persistence**: Sessions stored in SQLite but database file is gitignored. Backup if needed.
+
+6. **Cookie Security**: Development cookie secret is hardcoded. Use environment variable in production.
 
 ## Future Enhancements
 
-- [ ] Integrate local vision model (LLaVA) for accurate image descriptions
+- [ ] Use lightweight LLM for state classification (Phi-3 or TinyLlama)
 - [ ] Support multiple cats with identification
 - [ ] Activity tracking and analytics dashboard
 - [ ] Real-time notifications (push/email)
 - [ ] Mobile app integration
-- [ ] Automatic state detection from image (not just description)
 - [ ] Video clip recording on detection
 - [ ] Integration with other ATProto apps
 - [ ] Bluesky post creation with cat updates
+- [ ] Fine-tune Moondream on cat-specific imagery
 
 ## ATProto/Lexicon Notes
 
@@ -354,6 +361,7 @@ Images are uploaded as blobs using `com.atproto.repo.uploadBlob`, then reference
 - Created Windows-compatible version with camera selection
 - Added comprehensive project documentation (this file)
 - Added chronological navigation to frontend status viewer (Previous/Next/Latest buttons)
+- Integrated Moondream2 vision model for real image descriptions (replaces time-based heuristic)
 
 ---
 
