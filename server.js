@@ -93,6 +93,7 @@ app.get('/', async (req, res) => {
     // Clamp index to valid range
     const validIndex = Math.max(0, Math.min(index, records.length - 1))
     const currentStatus = records[validIndex].value
+    const currentRecord = records[validIndex]
     const stateEmojis = {
       'com.ffion.eating': '🍽️',
       'com.ffion.zoomies': '💨',
@@ -103,6 +104,9 @@ app.get('/', async (req, res) => {
     const stateName = currentStatus.state.replace('com.ffion.', '')
     const emoji = stateEmojis[currentStatus.state] || '🐱'
     const timestamp = new Date(currentStatus.createdAt).toLocaleString()
+
+    // Extract rkey from URI (format: at://did/collection/rkey)
+    const rkey = currentRecord.uri.split('/').pop()
 
     let imageHtml = ''
     if (currentStatus.image) {
@@ -225,7 +229,59 @@ app.get('/', async (req, res) => {
               text-align: center;
               margin-top: 10px;
             }
+            .delete-button {
+              background: #dc3545;
+              color: white;
+              padding: 12px 24px;
+              border: none;
+              border-radius: 5px;
+              font-size: 16px;
+              cursor: pointer;
+              margin-top: 20px;
+              width: 100%;
+              font-family: 'Comic Sans MS', cursive, sans-serif;
+              font-weight: bold;
+            }
+            .delete-button:hover {
+              background: #c82333;
+            }
+            .delete-button:disabled {
+              background: #ccc;
+              cursor: not-allowed;
+            }
           </style>
+          <script>
+            async function deleteStatus() {
+              if (!confirm('Are you sure you want to delete this status? This cannot be undone.')) {
+                return;
+              }
+
+              const deleteBtn = document.getElementById('deleteBtn');
+              deleteBtn.disabled = true;
+              deleteBtn.textContent = 'Deleting...';
+
+              try {
+                const response = await fetch('/ffion/status/${rkey}', {
+                  method: 'DELETE',
+                  credentials: 'include'
+                });
+
+                if (response.ok) {
+                  alert('Status deleted successfully!');
+                  window.location.href = '/';
+                } else {
+                  const data = await response.json();
+                  alert('Failed to delete: ' + (data.message || 'Unknown error'));
+                  deleteBtn.disabled = false;
+                  deleteBtn.textContent = '🗑️ Delete This Status';
+                }
+              } catch (error) {
+                alert('Network error: ' + error.message);
+                deleteBtn.disabled = false;
+                deleteBtn.textContent = '🗑️ Delete This Status';
+              }
+            }
+          </script>
         </head>
         <body>
           <div class="container">
@@ -245,6 +301,9 @@ app.get('/', async (req, res) => {
                 Older →
               </a>
             </div>
+            <button id="deleteBtn" class="delete-button" onclick="deleteStatus()">
+              🗑️ Delete This Status
+            </button>
           </div>
         </body>
       </html>
@@ -821,6 +880,58 @@ app.get('/xrpc/com.atproto.repo.getRecord', (req, res) => {
     res.status(500).json({
       error: 'InternalServerError',
       message: error.message
+    })
+  }
+})
+
+// DELETE /ffion/status/:rkey - Delete a Ffion status from the PDS
+app.delete('/ffion/status/:rkey', async (req, res) => {
+  try {
+    // Check authentication
+    const agent = await getSessionAgent(req, res)
+    if (!agent) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'You must be logged in to delete a status.'
+      })
+    }
+
+    const { rkey } = req.params
+
+    if (!rkey) {
+      return res.status(400).json({
+        error: 'InvalidRequest',
+        message: 'Missing record key (rkey)'
+      })
+    }
+
+    // Delete the record from the PDS
+    try {
+      await agent.com.atproto.repo.deleteRecord({
+        repo: agent.assertDid,
+        collection: 'com.ffion.status',
+        rkey
+      })
+
+      console.log(`✓ Deleted status from PDS: at://${agent.assertDid}/com.ffion.status/${rkey}`)
+
+      res.json({
+        success: true,
+        message: 'Status deleted successfully',
+        uri: `at://${agent.assertDid}/com.ffion.status/${rkey}`
+      })
+    } catch (err) {
+      console.error('Failed to delete from PDS:', err)
+      res.status(500).json({
+        error: 'PDSError',
+        message: `Failed to delete from PDS: ${err.message}`
+      })
+    }
+  } catch (err) {
+    console.error('Error deleting status:', err)
+    res.status(500).json({
+      error: 'InternalServerError',
+      message: err.message
     })
   }
 })

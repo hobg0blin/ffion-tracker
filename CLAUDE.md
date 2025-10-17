@@ -182,6 +182,9 @@ ffion-tracker/
 - Status counter showing current position (e.g., "Status 1 of 42")
 - Fetches up to 100 recent statuses from PDS
 - Navigation via query parameter `?index=N`
+- **Delete button** with confirmation dialog to remove unwanted statuses
+  - Requires authentication (uses session cookie)
+  - Permanently deletes from PDS (safety feature for privacy filter failures)
 
 ## Setup Instructions
 
@@ -247,6 +250,10 @@ SERVER_URL = "http://localhost:3000/ffion/status"
   - Multipart form data
   - Fields: `state` (required), `text` (optional), `image` (optional file)
   - Requires `ffion_sid` cookie
+- `DELETE /ffion/status/:rkey` - Delete a cat status from PDS
+  - Requires `ffion_sid` cookie
+  - Permanently removes record from PDS
+  - Used by frontend delete button
 
 ### Legacy Local Endpoints (in-memory, for testing)
 - `POST /xrpc/com.atproto.repo.createRecord`
@@ -394,7 +401,14 @@ Images are uploaded as blobs using `com.atproto.repo.uploadBlob`, then reference
 - Both filters work independently for defense-in-depth
 - Updated both cat_detector.py and cat_detector_windows.py
 
+### 2025-10-17 - Delete Feature
+- Added DELETE endpoint: `DELETE /ffion/status/:rkey` for removing statuses from PDS
+- Added red "Delete This Status" button to frontend with confirmation dialog
+- Safety feature to manually remove any images that slip through privacy filters
+- Requires authentication via session cookie
+- Redirects to homepage after successful deletion
+
 ---
 
 Last Updated: 2025-10-17
-Project Version: 1.1.0
+Project Version: 1.2.0
