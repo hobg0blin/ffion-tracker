@@ -109,14 +109,13 @@ class CatDetector:
 
         print("Loading Moondream vision model...")
         model_id = "vikhyatk/moondream2"
-        revision = "2025-01-09"  # Updated to latest stable revision
+        revision = "2024-07-23"  # Using stable revision that works without pyvips
         self.vision_model = AutoModelForCausalLM.from_pretrained(
             model_id,
             revision=revision,
             trust_remote_code=True,
             torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
-            device_map={"": "cuda" if torch.cuda.is_available() else "cpu"},
-            attn_implementation="eager"  # Add this for compatibility
+            device_map={"": "cuda" if torch.cuda.is_available() else "cpu"}
         )
         self.vision_tokenizer = AutoTokenizer.from_pretrained(model_id, revision=revision)
         print(f"Vision model loaded! (Using {'GPU' if torch.cuda.is_available() else 'CPU'})")
