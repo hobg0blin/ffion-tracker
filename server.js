@@ -32,6 +32,12 @@ async function getSession(req, res) {
   return await getIronSession(req, res, {
     cookieName: 'ffion_sid',
     password: COOKIE_SECRET,
+    cookieOptions: {
+      secure: false, // Allow cookies over HTTP for localhost
+      httpOnly: true,
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 30 // 30 days
+    }
   })
 }
 
@@ -271,7 +277,11 @@ app.get('/', async (req, res) => {
                   window.location.href = '/';
                 } else {
                   const data = await response.json();
-                  alert('Failed to delete: ' + (data.message || 'Unknown error'));
+                  if (response.status === 401) {
+                    alert('Not authenticated. Please log in first at /login');
+                  } else {
+                    alert('Failed to delete: ' + (data.message || 'Unknown error'));
+                  }
                   deleteBtn.disabled = false;
                   deleteBtn.textContent = '🗑️ Delete This Status';
                 }
