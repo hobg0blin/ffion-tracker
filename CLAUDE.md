@@ -146,6 +146,14 @@ ffion-tracker/
 - `com.ffion.playing` - Keywords: play, energy, hunt
 - `com.ffion.zoomies` - Keywords: zoom, mischief, midnight
 
+### 5. Frontend Status Viewer
+- Public page at `/` displays cat statuses with images
+- Chronological navigation with Previous/Next buttons
+- "Latest" button to jump back to most recent status
+- Status counter showing current position (e.g., "Status 1 of 42")
+- Fetches up to 100 recent statuses from PDS
+- Navigation via query parameter `?index=N`
+
 ## Setup Instructions
 
 ### First-Time Setup
@@ -345,6 +353,7 @@ Images are uploaded as blobs using `com.atproto.repo.uploadBlob`, then reference
 - Implemented Python cat detector with YOLO
 - Created Windows-compatible version with camera selection
 - Added comprehensive project documentation (this file)
+- Added chronological navigation to frontend status viewer (Previous/Next/Latest buttons)
 
 ---
 

@@ -52,19 +52,20 @@ async function getSessionAgent(req, res) {
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
-// GET / - Display latest Ffion status
+// GET / - Display Ffion status with navigation
 app.get('/', async (req, res) => {
   try {
     const hardcodedDid = 'did:plc:crwugtsporw4ixhqqyul4km6'
+    const index = parseInt(req.query.index || '0')
 
     // Create an agent without authentication (public access)
     const agent = new Agent({ service: 'https://atproto.bront.rodeo' })
 
-    // Fetch the latest status
+    // Fetch all statuses
     const response = await agent.com.atproto.repo.listRecords({
       repo: hardcodedDid,
       collection: 'com.ffion.status',
-      limit: 1
+      limit: 100
     })
 
     const records = response.data.records
@@ -89,7 +90,9 @@ app.get('/', async (req, res) => {
       `)
     }
 
-    const latestStatus = records[0].value
+    // Clamp index to valid range
+    const validIndex = Math.max(0, Math.min(index, records.length - 1))
+    const currentStatus = records[validIndex].value
     const stateEmojis = {
       'com.ffion.eating': '🍽️',
       'com.ffion.zoomies': '💨',
@@ -97,21 +100,21 @@ app.get('/', async (req, res) => {
       'com.ffion.sleeping': '😴'
     }
 
-    const stateName = latestStatus.state.replace('com.ffion.', '')
-    const emoji = stateEmojis[latestStatus.state] || '🐱'
-    const timestamp = new Date(latestStatus.createdAt).toLocaleString()
+    const stateName = currentStatus.state.replace('com.ffion.', '')
+    const emoji = stateEmojis[currentStatus.state] || '🐱'
+    const timestamp = new Date(currentStatus.createdAt).toLocaleString()
 
     let imageHtml = ''
-    if (latestStatus.image) {
+    if (currentStatus.image) {
       // Extract CID from blob reference
       // The ref property is a CID object, so we need to convert it to a string
       let blobCid = null
 
-      if (latestStatus.image.ref) {
+      if (currentStatus.image.ref) {
         // CID objects have a toString() method
-        blobCid = latestStatus.image.ref.toString()
-      } else if (typeof latestStatus.image.ref === 'string') {
-        blobCid = latestStatus.image.ref
+        blobCid = currentStatus.image.ref.toString()
+      } else if (typeof currentStatus.image.ref === 'string') {
+        blobCid = currentStatus.image.ref
       }
 
       console.log('Extracted CID:', blobCid)
@@ -123,6 +126,12 @@ app.get('/', async (req, res) => {
         console.error('Could not extract CID from image blob')
       }
     }
+
+    // Navigation
+    const hasPrevious = validIndex > 0
+    const hasNext = validIndex < records.length - 1
+    const previousIndex = validIndex - 1
+    const nextIndex = validIndex + 1
 
     res.send(`
       <html>
@@ -185,16 +194,56 @@ app.get('/', async (req, res) => {
             .refresh a:hover {
               background: #ff5a8c;
             }
+            .navigation {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              margin-top: 20px;
+              gap: 10px;
+            }
+            .nav-button {
+              background: #667eea;
+              color: white;
+              padding: 10px 20px;
+              text-decoration: none;
+              border-radius: 5px;
+              display: inline-block;
+              flex: 1;
+              text-align: center;
+            }
+            .nav-button:hover:not(.disabled) {
+              background: #5568d3;
+            }
+            .nav-button.disabled {
+              background: #ccc;
+              cursor: not-allowed;
+              pointer-events: none;
+            }
+            .status-counter {
+              color: #999;
+              font-size: 0.9em;
+              text-align: center;
+              margin-top: 10px;
+            }
           </style>
         </head>
         <body>
           <div class="container">
             <h1>Ffion Is <strong>${stateName.toUpperCase()}</strong></h1>
-            ${latestStatus.text ? `<div class="text">"${latestStatus.text}"</div>` : ''}
+            ${currentStatus.text ? `<div class="text">"${currentStatus.text}"</div>` : ''}
             ${imageHtml}
             <div class="timestamp">📅 ${timestamp}</div>
-            <div class="refresh">
-              <a href="/">🔄 Refresh</a>
+            <div class="status-counter">Status ${validIndex + 1} of ${records.length}</div>
+            <div class="navigation">
+              <a href="/?index=${previousIndex}" class="nav-button ${!hasPrevious ? 'disabled' : ''}">
+                ← Newer
+              </a>
+              <a href="/?index=0" class="nav-button">
+                Latest
+              </a>
+              <a href="/?index=${nextIndex}" class="nav-button ${!hasNext ? 'disabled' : ''}">
+                Older →
+              </a>
             </div>
           </div>
         </body>
