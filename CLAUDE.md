@@ -1,5 +1,7 @@
 # Ffion Tracker - Project Context
 
+⚠️ **CURRENT STATUS (2025-10-17)**: Image description model (Moondream2) is hanging indefinitely. See "CURRENT ISSUES" section below for detailed troubleshooting notes and recommended next steps (switch to BLIP-2).
+
 ## Overview
 
 Ffion Tracker is an ATProto-based application for tracking a cat named Ffion using automated computer vision. The system uses YOLO (YOLOv8) to detect cats via webcam, captures images, generates descriptions, and posts them to an ATProto Personal Data Server (PDS).
@@ -289,6 +291,83 @@ curl -X POST http://127.0.0.1:3000/ffion/status \
   -b "ffion_sid=<cookie_value>" \
   -d '{"state": "com.ffion.playing", "text": "Test status"}'
 ```
+
+## CURRENT ISSUES (2025-10-17)
+
+### Moondream2 Hanging Issue - NEEDS ATTENTION
+
+**Problem**: Python script hangs indefinitely when calling `self.vision_model.query(image, prompt)` for image description. OpenCV window shows (Not Responding).
+
+**What We've Tried**:
+1. Multiple Moondream2 revisions (2024-07-23, 2024-08-26, 2025-01-09, 2025-06-21)
+2. Different API methods:
+   - `encode_image()` + `answer_question()` → AttributeError: 'PhiForCausalLM' has no attribute 'generate'
+   - `query()` method → Hangs indefinitely
+3. Installed pyvips, transformers>=4.45.0, timm, einops
+4. Tried both CPU and GPU configurations
+
+**Root Cause**: Moondream2 model appears to have compatibility issues with the current environment. Multiple revisions have different problems (missing methods, hanging, architecture mismatches).
+
+### Suggested Next Steps (In Order of Preference):
+
+#### Option 1: Switch to BLIP-2 (RECOMMENDED)
+**Why**: Battle-tested, widely used, excellent documentation, reliable API
+```python
+from transformers import Blip2Processor, Blip2ForConditionalGeneration
+
+processor = Blip2Processor.from_pretrained("Salesforce/blip2-opt-2.7b")
+model = Blip2ForConditionalGeneration.from_pretrained("Salesforce/blip2-opt-2.7b")
+
+# Generate description
+inputs = processor(images=image, text="Describe what this cat is doing", return_tensors="pt")
+outputs = model.generate(**inputs, max_length=50)
+description = processor.decode(outputs[0], skip_special_tokens=True)
+```
+**Pros**: Stable, well-maintained, good quality, easy to use
+**Cons**: Slightly larger model (~2.7GB)
+
+#### Option 2: Use LLaVA-1.5
+**Why**: Newer, high-quality multimodal model
+```python
+from transformers import LlavaNextProcessor, LlavaNextForConditionalGeneration
+
+processor = LlavaNextProcessor.from_pretrained("llava-hf/llava-1.5-7b-hf")
+model = LlavaNextForConditionalGeneration.from_pretrained("llava-hf/llava-1.5-7b-hf")
+```
+**Pros**: Very high quality descriptions
+**Cons**: Larger model (7GB), requires more resources
+
+#### Option 3: Use BLIP (original, smaller)
+**Why**: Very lightweight, fast
+```python
+from transformers import BlipProcessor, BlipForConditionalGeneration
+
+processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
+model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base")
+
+inputs = processor(image, return_tensors="pt")
+outputs = model.generate(**inputs)
+description = processor.decode(outputs[0], skip_special_tokens=True)
+```
+**Pros**: Small (~500MB), fast, simple
+**Cons**: Less detailed descriptions than BLIP-2
+
+#### Option 4: Use Cloud API (Fallback)
+- OpenAI Vision API
+- Google Cloud Vision API
+- Anthropic Claude with vision
+**Pros**: No local model issues, high quality
+**Cons**: Costs money, requires internet, privacy concerns
+
+#### Option 5: Debug Moondream Further
+- Try running Moondream in a separate thread with timeout
+- Test with minimal example outside the main loop
+- Check if it's a device_map or torch issue
+**Pros**: Keep the model we chose
+**Cons**: Already spent significant time troubleshooting
+
+### Recommendation:
+**Switch to BLIP-2 (Option 1)**. It's the best balance of quality, reliability, and ease of use. The slightly larger size is worth the stability.
 
 ## Known Issues & Limitations
 
